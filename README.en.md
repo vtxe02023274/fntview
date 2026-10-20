@@ -14,6 +14,7 @@ BMFont is AngelCode's bitmap font format. libGDX, Phaser, MonoGame, Cocos and ma
 
 - Reads text, XML and binary (version 3) .fnt files, plus the JSON written by msdf-bmfont and similar tools, and detects which one it is
 - Lays out text the BMFont way: xoffset / yoffset, xadvance, kerning pairs, lineHeight for new lines
+- Distance field fonts (SDF, PSDF, MSDF, MTSDF, from the `distanceField` settings): the preview decodes them the way the usual MSDF shader does, so they stay sharp when zoomed; an SDF sample font is included
 - Shows baselines and glyph boxes so offsets are easy to check
 - Atlas view with every glyph's rectangle; hover for id, size and offsets
 - Problem checks: glyphs outside the atlas, missing pages, duplicate characters, no space character, kerning for characters that do not exist, page images that are not the declared size

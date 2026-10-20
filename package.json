@@ -7,7 +7,7 @@
   "author": "冷牛",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --format=esm --target=es2022 --minify --sourcemap --outfile=site/main.js && node -e \"const f=require('fs');for(const n of ['index.html','demo.fnt','demo.png'])f.copyFileSync('public/'+n,'site/'+n)\"",
+    "build": "esbuild src/main.ts --bundle --format=esm --target=es2022 --minify --sourcemap --outfile=site/main.js && node -e \"const f=require('fs');for(const n of ['index.html','demo.fnt','demo.png','demo-sdf.fnt','demo-sdf.png'])f.copyFileSync('public/'+n,'site/'+n)\"",
     "demo": "node tools/make-demo.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",

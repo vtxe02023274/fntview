@@ -1,4 +1,5 @@
 import { checkFont } from './check.js';
+import { decodeGlyph, type Pixels } from './field.js';
 import {
   detectFormat,
   FontError,
@@ -29,6 +30,9 @@ let font: BMFont | undefined;
 let fontName = 'font';
 let pages: (ImageBitmap | undefined)[] = [];
 let tinted: (HTMLCanvasElement | undefined)[] = [];
+let pagePixels: (Pixels | undefined)[] = [];
+/** Decoded distance field glyphs by position and zoom. */
+let fieldGlyphs = new Map<string, HTMLCanvasElement>();
 
 async function open(files: File[]): Promise<void> {
   const fntFile = files.find((f) => /\.(fnt|xml|txt|json)$/i.test(f.name));
@@ -58,22 +62,27 @@ async function open(files: File[]): Promise<void> {
   showFont();
 }
 
-async function openDemo(): Promise<void> {
-  const [fnt, png] = await Promise.all([fetch('demo.fnt'), fetch('demo.png')]);
+async function openDemo(name = 'demo'): Promise<void> {
+  const [fnt, png] = await Promise.all([fetch(`${name}.fnt`), fetch(`${name}.png`)]);
   await open([
-    new File([await fnt.arrayBuffer()], 'demo.fnt'),
-    new File([await png.blob()], 'demo.png'),
+    new File([await fnt.arrayBuffer()], `${name}.fnt`),
+    new File([await png.blob()], `${name}.png`),
   ]);
 }
 
 function showFont(): void {
   const f = font!;
   tinted = [];
+  pagePixels = [];
+  fieldGlyphs = new Map();
   info.textContent = [
     `${f.info.face || '(no face name)'}, size ${Math.abs(f.info.size)}${f.info.bold ? ', bold' : ''}${f.info.italic ? ', italic' : ''}`,
     `${f.chars.length} chars, ${f.kernings.length} kerning pairs`,
     `line height ${f.common.lineHeight}, base ${f.common.base}`,
     `${f.pages.length} page${f.pages.length === 1 ? '' : 's'} of ${f.common.scaleW}x${f.common.scaleH}`,
+    ...(f.distanceField
+      ? [`${f.distanceField.fieldType}, distance range ${f.distanceField.distanceRange}`]
+      : []),
   ].join('\n');
   pageSelect.replaceChildren(...f.pages.map((p, i) => new Option(`${i}: ${p}`, String(i))));
   const found = checkFont(
@@ -111,6 +120,45 @@ function pageImage(index: number): CanvasImageSource | undefined {
   return tinted[index];
 }
 
+function pageData(index: number): Pixels | undefined {
+  const page = pages[index];
+  if (!page) return undefined;
+  if (!pagePixels[index]) {
+    const c = document.createElement('canvas');
+    c.width = page.width;
+    c.height = page.height;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(page, 0, 0);
+    pagePixels[index] = ctx.getImageData(0, 0, c.width, c.height);
+  }
+  return pagePixels[index];
+}
+
+/** A distance field glyph decoded at the zoom level, in the tint color. */
+function fieldGlyph(glyph: Glyph, zoom: number): HTMLCanvasElement | undefined {
+  const key = `${glyph.page},${glyph.x},${glyph.y},${glyph.width},${glyph.height},${zoom}`;
+  let c = fieldGlyphs.get(key);
+  if (c) return c;
+  const page = pageData(glyph.page);
+  if (!page || !font?.distanceField) return undefined;
+  const { width, height, alpha } = decodeGlyph(page, glyph, zoom, font.distanceField);
+  c = document.createElement('canvas');
+  c.width = width;
+  c.height = height;
+  const ctx = c.getContext('2d')!;
+  const image = ctx.createImageData(width, height);
+  const tint = parseInt(tintInput.value.slice(1), 16);
+  for (let i = 0; i < alpha.length; i++) {
+    image.data[i * 4] = tint >> 16;
+    image.data[i * 4 + 1] = (tint >> 8) & 255;
+    image.data[i * 4 + 2] = tint & 255;
+    image.data[i * 4 + 3] = alpha[i]!;
+  }
+  ctx.putImageData(image, 0, 0);
+  fieldGlyphs.set(key, c);
+  return c;
+}
+
 function draw(): void {
   if (!font) return;
   const zoom = Number(zoomInput.value);
@@ -132,7 +180,11 @@ function draw(): void {
   }
 
   for (const { glyph, x, y } of layout.glyphs) {
-    const image = pageImage(glyph.page);
+    if (font.distanceField) {
+      const decoded = glyph.width && glyph.height ? fieldGlyph(glyph, zoom) : undefined;
+      if (decoded) ctx.drawImage(decoded, (margin + x) * zoom, (margin + y) * zoom);
+    }
+    const image = font.distanceField ? undefined : pageImage(glyph.page);
     if (image && glyph.width && glyph.height) {
       ctx.drawImage(
         image,
@@ -173,7 +225,8 @@ function drawAtlas(): void {
   const ctx = atlas.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, atlas.width, atlas.height);
-  const image = pageImage(page);
+  // Distance field pages are opaque, tinting them would hide the field.
+  const image = font.distanceField ? pages[page] : pageImage(page);
   if (image) ctx.drawImage(image, 0, 0, atlas.width, atlas.height);
   for (const g of font.chars) {
     if (g.page !== page || !g.width) continue;
@@ -217,10 +270,13 @@ $('#export-json').addEventListener(
   'click',
   () => font && download(`${fontName}.json`, writeJson(font)),
 );
-$('#export-binary').addEventListener(
-  'click',
-  () => font && download(`${fontName}.bin.fnt`, writeBinary(font) as BlobPart),
-);
+$('#export-binary').addEventListener('click', () => {
+  if (!font) return;
+  download(`${fontName}.bin.fnt`, writeBinary(font) as BlobPart);
+  if (font.distanceField) {
+    message.textContent = 'the binary format has no distance field settings, they were left out';
+  }
+});
 
 $<HTMLInputElement>('#file').addEventListener('change', (e) => {
   open([...((e.target as HTMLInputElement).files ?? [])]);
@@ -230,10 +286,12 @@ addEventListener('drop', (e) => {
   e.preventDefault();
   open([...(e.dataTransfer?.files ?? [])]);
 });
-$('#demo').addEventListener('click', openDemo);
+$('#demo').addEventListener('click', () => openDemo());
+$('#demo-sdf').addEventListener('click', () => openDemo('demo-sdf'));
 for (const el of [sample, zoomInput, guides]) el.addEventListener('input', draw);
 tintInput.addEventListener('input', () => {
   tinted = [];
+  fieldGlyphs = new Map();
   draw();
 });
 pageSelect.addEventListener('change', drawAtlas);

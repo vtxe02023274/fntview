@@ -53,12 +53,32 @@ export interface Kerning {
   amount: number;
 }
 
+/**
+ * Signed distance field fonts from msdf-bmfont-xml and similar tools. The
+ * pages hold distances instead of coverage and are decoded when drawn.
+ */
+export interface DistanceField {
+  fieldType: 'sdf' | 'psdf' | 'msdf' | 'mtsdf';
+  /** Width of the distance range in atlas pixels. */
+  distanceRange: number;
+}
+
 export interface BMFont {
   info: FontInfo;
   common: FontCommon;
   pages: string[];
   chars: Glyph[];
   kernings: Kerning[];
+  distanceField?: DistanceField;
+}
+
+const FIELD_TYPES = ['sdf', 'psdf', 'msdf', 'mtsdf'] as const;
+
+function distanceField(fieldType: unknown, distanceRange: unknown): DistanceField | undefined {
+  const type = String(fieldType ?? '').toLowerCase();
+  const range = Number(distanceRange);
+  if (!(FIELD_TYPES as readonly string[]).includes(type) || !(range > 0)) return undefined;
+  return { fieldType: type as DistanceField['fieldType'], distanceRange: range };
 }
 
 export type FontFormat = 'text' | 'xml' | 'binary' | 'json';
@@ -158,6 +178,9 @@ function parseJson(source: string): BMFont {
       amount: n(k.amount),
     }),
   );
+  const df = j.distanceField as Record<string, unknown> | undefined;
+  const field = df && distanceField(df.fieldType, df.distanceRange);
+  if (field) font.distanceField = field;
   return font;
 }
 
@@ -247,6 +270,11 @@ function parseTagged(source: string, format: 'text' | 'xml'): BMFont {
       case 'kerning':
         font.kernings.push({ first: n('first'), second: n('second'), amount: n('amount') });
         break;
+      case 'distanceField': {
+        const field = distanceField(attrs.get('fieldType'), attrs.get('distanceRange'));
+        if (field) font.distanceField = field;
+        break;
+      }
     }
   }
   if (!sawInfo || !sawCommon)
@@ -426,6 +454,10 @@ export function writeText(font: BMFont): string {
         `char id=${g.id} x=${g.x} y=${g.y} width=${g.width} height=${g.height} xoffset=${g.xoffset} yoffset=${g.yoffset} xadvance=${g.xadvance} page=${g.page} chnl=${g.chnl}`,
     ),
   ];
+  if (font.distanceField) {
+    const { fieldType, distanceRange } = font.distanceField;
+    lines.push(`distanceField fieldType=${fieldType} distanceRange=${distanceRange}`);
+  }
   if (font.kernings.length) {
     lines.push(`kernings count=${font.kernings.length}`);
     for (const k of font.kernings)
@@ -458,6 +490,10 @@ export function writeXml(font: BMFont): string {
       out.push(`    <kerning first="${k.first}" second="${k.second}" amount="${k.amount}" />`);
     out.push('  </kernings>');
   }
+  if (font.distanceField) {
+    const { fieldType, distanceRange } = font.distanceField;
+    out.push(`  <distanceField fieldType="${fieldType}" distanceRange="${distanceRange}"/>`);
+  }
   out.push('</font>');
   return out.join('\n') + '\n';
 }
@@ -480,6 +516,7 @@ export function writeJson(font: BMFont): string {
         },
         common: { ...c, packed: b01(c.packed) },
         kernings: font.kernings,
+        ...(font.distanceField ? { distanceField: font.distanceField } : {}),
       },
       null,
       1,

@@ -1,3 +1,4 @@
+import { blankFont } from './blank.js';
 import type { BMFont, Kerning } from './font.js';
 import { buildFont, codePoints, packGlyphs, pageHeightFor, type GlyphMetrics } from './generate.js';
 
@@ -15,11 +16,12 @@ const MAX_KERNED_CHARS = 200;
  * Rasterizes a font file with the browser's text renderer into one white
  * page and a BMFont descriptor for it. Metrics come from measureText, so
  * the result lines up with how the browser itself draws the font.
+ * Characters the font does not have are left out and listed in missing.
  */
 export async function makeFont(
   file: File,
   options: MakeOptions,
-): Promise<{ font: BMFont; page: HTMLCanvasElement }> {
+): Promise<{ font: BMFont; page: HTMLCanvasElement; missing: number[] }> {
   const name = file.name.replace(/\.[^.]+$/, '');
   const family = `fntview ${name} ${Date.now()}`;
   const face = new FontFace(family, await file.arrayBuffer());
@@ -34,7 +36,27 @@ export async function makeFont(
   const ascent = Math.ceil(line.fontBoundingBoxAscent);
   const lineHeight = ascent + Math.ceil(line.fontBoundingBoxDescent);
 
-  const codes = codePoints(options.text);
+  // measureText cannot tell a glyph of the face from one of a system
+  // fallback font. Two blank fallbacks with different advances can: only a
+  // character the face lacks measures differently between them.
+  const blanks = await Promise.all(
+    [0, 1000].map(async (advance) => {
+      const blank = new FontFace(`${family} blank ${advance}`, blankFont(advance));
+      await blank.load();
+      document.fonts.add(blank);
+      const ctx = document.createElement('canvas').getContext('2d')!;
+      ctx.font = `${size}px "${family}", "${blank.family}"`;
+      return { blank, ctx };
+    }),
+  );
+  const missing: number[] = [];
+  const codes = codePoints(options.text).filter((id) => {
+    const [a, b] = blanks.map(({ ctx }) => ctx.measureText(String.fromCodePoint(id)).width);
+    if (a === b) return true;
+    missing.push(id);
+    return false;
+  });
+  for (const { blank } of blanks) document.fonts.delete(blank);
   const advances = new Map<number, number>();
   const draws: { left: number; top: number }[] = [];
   const glyphs: GlyphMetrics[] = codes.map((id) => {
@@ -98,5 +120,5 @@ export async function makeFont(
     packed,
     kernings,
   );
-  return { font, page };
+  return { font, page, missing };
 }

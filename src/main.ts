@@ -322,6 +322,10 @@ $('#make').addEventListener('click', async () => {
     fontName = font.info.face;
     pages = [await createImageBitmap(made.page)];
     message.textContent = `made ${font.chars.length} chars from ${file.name}, save the page and a descriptor below`;
+    if (made.missing.length) {
+      const list = made.missing.map((c) => String.fromCodePoint(c)).join(' ');
+      message.textContent += `; left out ${made.missing.length} not in the font: ${list}`;
+    }
     showFont();
   } catch (err) {
     message.textContent =

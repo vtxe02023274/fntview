@@ -10,6 +10,10 @@ const describe = (id: number) =>
     ? `'${String.fromCharCode(id)}' (${id})`
     : `U+${id.toString(16).toUpperCase().padStart(4, '0')}`;
 
+/** Combining marks and format characters such as joiners are meant to take no room. */
+const zeroWidth = (id: number) =>
+  id <= 0x10ffff && /^[\p{M}\p{Cf}]$/u.test(String.fromCodePoint(id));
+
 /** Problems that show up as missing or garbled text in a game. */
 export function checkFont(
   font: BMFont,
@@ -42,7 +46,7 @@ export function checkFont(
         `${name} at ${g.x},${g.y} ${g.width}x${g.height} reaches outside the ${common.scaleW}x${common.scaleH} page`,
       );
     }
-    if (g.xadvance <= 0 && g.id !== 0x200b)
+    if (g.xadvance < 0 || (g.xadvance === 0 && !zeroWidth(g.id)))
       warning(`${name} has xadvance ${g.xadvance}, text after it will overlap`);
   }
   if (!seen.has(32))

@@ -171,6 +171,22 @@ describe('checkFont', () => {
     expect(checkFont(demo(), [{ width: 64, height: 32 }])).toEqual([]);
   });
 
+  it('warns about xadvance 0 only for characters that should take room', () => {
+    const font = demo();
+    const a = font.chars.find((c) => c.id === 65)!;
+    font.chars.push(
+      { ...a, id: 0x301, xadvance: 0 },
+      { ...a, id: 0x200d, xadvance: 0 },
+      { ...a, id: 0x200b, xadvance: 0 },
+      { ...a, id: 0x302, xadvance: -1 },
+    );
+    a.xadvance = 0;
+    expect(checkFont(font).map((p) => p.message)).toEqual([
+      "'A' (65) has xadvance 0, text after it will overlap",
+      'U+0302 has xadvance -1, text after it will overlap',
+    ]);
+  });
+
   it('reports glyphs off the page, bad pages, duplicates and stray kerning', () => {
     const font = demo();
     font.chars.push({ ...font.chars[10]!, x: 62 });

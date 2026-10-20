@@ -89,6 +89,19 @@ describe('parseFont', () => {
     expect(parseFont(enc(writeJson(font))).info.fixedHeight).toBe(true);
   });
 
+  it('maps charset names to binary codes and back', () => {
+    const font = demo();
+    font.info.unicode = false;
+    font.info.charset = 'CHINESEBIG5';
+    const bin = writeBinary(font);
+    expect(bin[4 + 5 + 3]).toBe(136);
+    expect(parseFont(bin).info.charset).toBe('CHINESEBIG5');
+    font.info.charset = 'shiftjis';
+    expect(parseFont(writeBinary(font)).info.charset).toBe('SHIFTJIS');
+    font.info.charset = '';
+    expect(parseFont(writeBinary(font)).info.charset).toBe('ANSI');
+  });
+
   it('rejects other files', () => {
     expect(() => parseFont(enc('hello'))).toThrow(FontError);
     expect(() => parseFont(enc('info face="x"\n'))).toThrow(/missing its info or common/);

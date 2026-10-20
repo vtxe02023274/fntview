@@ -81,6 +81,34 @@ function distanceField(fieldType: unknown, distanceRange: unknown): DistanceFiel
   return { fieldType: type as DistanceField['fieldType'], distanceRange: range };
 }
 
+/** Windows charset names BMFont writes in text and XML, with their binary codes. */
+const CHARSETS: Record<string, number> = {
+  ANSI: 0,
+  DEFAULT: 1,
+  SYMBOL: 2,
+  MAC: 77,
+  SHIFTJIS: 128,
+  HANGUL: 129,
+  JOHAB: 130,
+  GB2312: 134,
+  CHINESEBIG5: 136,
+  GREEK: 161,
+  TURKISH: 162,
+  VIETNAMESE: 163,
+  HEBREW: 177,
+  ARABIC: 178,
+  BALTIC: 186,
+  RUSSIAN: 204,
+  THAI: 222,
+  EASTEUROPE: 238,
+  OEM: 255,
+};
+
+const charsetName = (code: number) =>
+  Object.keys(CHARSETS).find((name) => CHARSETS[name] === code) ?? String(code);
+
+const charsetCode = (name: string) => CHARSETS[name.trim().toUpperCase()] ?? (Number(name) || 0);
+
 export type FontFormat = 'text' | 'xml' | 'binary' | 'json';
 
 export class FontError extends Error {}
@@ -369,7 +397,7 @@ function parseBinary(bytes: Uint8Array): BMFont {
           italic: (flags & 0x20) !== 0,
           bold: (flags & 0x10) !== 0,
           fixedHeight: (flags & 0x08) !== 0,
-          charset: String(bytes[start + 3]!),
+          charset: charsetName(bytes[start + 3]!),
           stretchH: view.getUint16(start + 4, true),
           aa: bytes[start + 6]!,
           padding: [bytes[start + 7]!, bytes[start + 8]!, bytes[start + 9]!, bytes[start + 10]!],
@@ -545,7 +573,7 @@ export function writeBinary(font: BMFont): Uint8Array {
     (i.italic ? 0x20 : 0) |
     (i.bold ? 0x10 : 0) |
     (i.fixedHeight ? 0x08 : 0);
-  info[3] = i.unicode ? 0 : Number(i.charset) || 0;
+  info[3] = i.unicode ? 0 : charsetCode(i.charset);
   iv.setUint16(4, i.stretchH, true);
   info.set([i.aa, ...i.padding, ...i.spacing, i.outline], 6);
   info.set(face, 14);

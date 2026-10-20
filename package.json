@@ -1,0 +1,27 @@
+{
+  "name": "fntview",
+  "version": "0.1.0",
+  "private": true,
+  "description": "View, check and convert AngelCode BMFont bitmap fonts in the browser.",
+  "license": "MIT",
+  "author": "冷牛",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --format=esm --target=es2022 --minify --sourcemap --outfile=site/main.js && node -e \"const f=require('fs');for(const n of ['index.html','demo.fnt','demo.png'])f.copyFileSync('public/'+n,'site/'+n)\"",
+    "demo": "node tools/make-demo.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^20.19.43",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^4.1.12"
+  }
+}

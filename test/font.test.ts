@@ -152,6 +152,18 @@ describe('layoutText', () => {
     expect(layout.missing).toEqual([126]);
     expect(layout.height).toBe(14);
   });
+
+  it('draws no fallback for zero width characters and does not kern across skipped ones', () => {
+    const font = demo();
+    const marks = layoutText(font, 'e\u0301 A\u2764\ufe0f');
+    expect(marks.glyphs.map((g) => String.fromCodePoint(g.glyph.id)).join('')).toBe('e A?');
+    expect(marks.missing).toEqual([0x2764]);
+
+    font.chars = font.chars.filter((c) => c.id !== 63);
+    font.kernings.push({ first: 65, second: 86, amount: -2 });
+    expect(layoutText(font, 'AV').glyphs[1]!.x).toBe(2);
+    expect(layoutText(font, 'A\u00e9V').glyphs[1]!.x).toBe(4);
+  });
 });
 
 describe('checkFont', () => {

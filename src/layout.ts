@@ -15,6 +15,8 @@ export interface TextLayout {
   missing: number[];
 }
 
+const ZERO_WIDTH = /^[\p{M}\p{Cf}]$/u;
+
 /**
  * Places text the way BMFont describes it: each glyph is drawn at the pen
  * position plus its offsets, the pen moves by xadvance plus the kerning
@@ -42,9 +44,15 @@ export function layoutText(font: BMFont, text: string): TextLayout {
     }
     let glyph = byId.get(code);
     if (!glyph) {
+      // Combining marks, variation selectors and joiners take no room, a
+      // fallback box for them would only get in the way.
+      if (ZERO_WIDTH.test(ch)) continue;
       missing.add(code);
       glyph = fallback;
-      if (!glyph) continue;
+      if (!glyph) {
+        previous = undefined;
+        continue;
+      }
     }
     if (previous !== undefined) x += kerning.get(`${previous},${glyph.id}`) ?? 0;
     glyphs.push({ glyph, x: x + glyph.xoffset, y: y + glyph.yoffset });

@@ -80,6 +80,15 @@ describe('parseFont', () => {
     expect(detectFormat(writeBinary(font))).toBe('binary');
   });
 
+  it('keeps fixedHeight in every writer', () => {
+    const font = demo();
+    font.info.fixedHeight = true;
+    expect(parseFont(enc(writeText(font))).info.fixedHeight).toBe(true);
+    expect(parseFont(enc(writeXml(font))).info.fixedHeight).toBe(true);
+    expect(parseFont(writeBinary(font)).info.fixedHeight).toBe(true);
+    expect(parseFont(enc(writeJson(font))).info.fixedHeight).toBe(true);
+  });
+
   it('rejects other files', () => {
     expect(() => parseFont(enc('hello'))).toThrow(FontError);
     expect(() => parseFont(enc('info face="x"\n'))).toThrow(/missing its info or common/);

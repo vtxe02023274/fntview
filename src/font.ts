@@ -445,7 +445,7 @@ const b = (v: boolean) => (v ? 1 : 0);
 export function writeText(font: BMFont): string {
   const { info: i, common: c } = font;
   const lines = [
-    `info face=${quote(i.face)} size=${i.size} bold=${b(i.bold)} italic=${b(i.italic)} charset=${quote(i.charset)} unicode=${b(i.unicode)} stretchH=${i.stretchH} smooth=${b(i.smooth)} aa=${i.aa} padding=${i.padding.join(',')} spacing=${i.spacing.join(',')} outline=${i.outline}`,
+    `info face=${quote(i.face)} size=${i.size} bold=${b(i.bold)} italic=${b(i.italic)} charset=${quote(i.charset)} unicode=${b(i.unicode)} stretchH=${i.stretchH} smooth=${b(i.smooth)} aa=${i.aa} padding=${i.padding.join(',')} spacing=${i.spacing.join(',')} outline=${i.outline} fixedHeight=${b(i.fixedHeight)}`,
     `common lineHeight=${c.lineHeight} base=${c.base} scaleW=${c.scaleW} scaleH=${c.scaleH} pages=${c.pages} packed=${b(c.packed)} alphaChnl=${c.alphaChnl} redChnl=${c.redChnl} greenChnl=${c.greenChnl} blueChnl=${c.blueChnl}`,
     ...font.pages.map((p, id) => `page id=${id} file=${quote(p)}`),
     `chars count=${font.chars.length}`,
@@ -472,7 +472,7 @@ export function writeXml(font: BMFont): string {
   const out = [
     '<?xml version="1.0"?>',
     '<font>',
-    `  <info face="${esc(i.face)}" size="${i.size}" bold="${b(i.bold)}" italic="${b(i.italic)}" charset="${esc(i.charset)}" unicode="${b(i.unicode)}" stretchH="${i.stretchH}" smooth="${b(i.smooth)}" aa="${i.aa}" padding="${i.padding.join(',')}" spacing="${i.spacing.join(',')}" outline="${i.outline}"/>`,
+    `  <info face="${esc(i.face)}" size="${i.size}" bold="${b(i.bold)}" italic="${b(i.italic)}" charset="${esc(i.charset)}" unicode="${b(i.unicode)}" stretchH="${i.stretchH}" smooth="${b(i.smooth)}" aa="${i.aa}" padding="${i.padding.join(',')}" spacing="${i.spacing.join(',')}" outline="${i.outline}" fixedHeight="${b(i.fixedHeight)}"/>`,
     `  <common lineHeight="${c.lineHeight}" base="${c.base}" scaleW="${c.scaleW}" scaleH="${c.scaleH}" pages="${c.pages}" packed="${b(c.packed)}" alphaChnl="${c.alphaChnl}" redChnl="${c.redChnl}" greenChnl="${c.greenChnl}" blueChnl="${c.blueChnl}"/>`,
     '  <pages>',
     ...font.pages.map((p, id) => `    <page id="${id}" file="${esc(p)}" />`),

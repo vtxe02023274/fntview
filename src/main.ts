@@ -4,6 +4,7 @@ import {
   FontError,
   parseFont,
   writeBinary,
+  writeJson,
   writeText,
   writeXml,
   type BMFont,
@@ -30,7 +31,7 @@ let pages: (ImageBitmap | undefined)[] = [];
 let tinted: (HTMLCanvasElement | undefined)[] = [];
 
 async function open(files: File[]): Promise<void> {
-  const fntFile = files.find((f) => /\.(fnt|xml|txt)$/i.test(f.name));
+  const fntFile = files.find((f) => /\.(fnt|xml|txt|json)$/i.test(f.name));
   if (!fntFile) {
     message.textContent = 'pick a .fnt file, together with its page images';
     return;
@@ -211,6 +212,10 @@ $('#export-text').addEventListener(
 $('#export-xml').addEventListener(
   'click',
   () => font && download(`${fontName}.xml.fnt`, writeXml(font)),
+);
+$('#export-json').addEventListener(
+  'click',
+  () => font && download(`${fontName}.json`, writeJson(font)),
 );
 $('#export-binary').addEventListener(
   'click',

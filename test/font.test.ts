@@ -6,6 +6,7 @@ import {
   FontError,
   parseFont,
   writeBinary,
+  writeJson,
   writeText,
   writeXml,
 } from '../src/font.js';
@@ -74,6 +75,8 @@ describe('parseFont', () => {
     expect(parseFont(enc(writeText(font)))).toEqual(font);
     expect(parseFont(enc(writeXml(font)))).toEqual(font);
     expect(parseFont(writeBinary(font))).toEqual(font);
+    expect(parseFont(enc(writeJson(font)))).toEqual(font);
+    expect(detectFormat(enc(writeJson(font)))).toBe('json');
     expect(detectFormat(writeBinary(font))).toBe('binary');
   });
 

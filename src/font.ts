@@ -61,7 +61,7 @@ export interface BMFont {
   kernings: Kerning[];
 }
 
-export type FontFormat = 'text' | 'xml' | 'binary';
+export type FontFormat = 'text' | 'xml' | 'binary' | 'json';
 
 export class FontError extends Error {}
 
@@ -72,6 +72,7 @@ export function detectFormat(bytes: Uint8Array): FontFormat {
     .replace(/^\uFEFF/, '')
     .trimStart();
   if (head.startsWith('<')) return 'xml';
+  if (head.startsWith('{')) return 'json';
   if (head.startsWith('info')) return 'text';
   throw new FontError('not a BMFont file (expected "info", "<font" or "BMF" at the start)');
 }
@@ -84,7 +85,80 @@ export function parseFont(bytes: Uint8Array): BMFont {
       return parseTagged(new TextDecoder().decode(bytes), 'xml');
     case 'text':
       return parseTagged(new TextDecoder().decode(bytes), 'text');
+    case 'json':
+      return parseJson(new TextDecoder().decode(bytes));
   }
+}
+
+/**
+ * The JSON layout written by msdf-bmfont-xml and read by three-bmfont-text,
+ * PixiJS and others: the same fields as the text format, grouped by tag.
+ */
+function parseJson(source: string): BMFont {
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(source);
+  } catch (err) {
+    throw new FontError(`invalid JSON: ${(err as Error).message}`);
+  }
+  if (!j.info || !j.common) throw new FontError('json font is missing its info or common object');
+  const font = emptyFont();
+  const info = j.info as Record<string, unknown>;
+  const common = j.common as Record<string, unknown>;
+  const n = (v: unknown, fallback = 0) =>
+    typeof v === 'number' ? v : Number(v ?? fallback) || fallback;
+  const pair = <T extends number[]>(v: unknown, length: number) =>
+    (Array.isArray(v) ? v.map((x) => n(x)) : [])
+      .concat(Array(length).fill(0))
+      .slice(0, length) as T;
+  font.info = {
+    face: String(info.face ?? ''),
+    size: n(info.size),
+    bold: n(info.bold) === 1,
+    italic: n(info.italic) === 1,
+    unicode: n(info.unicode) === 1,
+    smooth: n(info.smooth) === 1,
+    fixedHeight: n(info.fixedHeight) === 1,
+    charset: Array.isArray(info.charset) ? '' : String(info.charset ?? ''),
+    stretchH: n(info.stretchH, 100),
+    aa: n(info.aa, 1),
+    padding: pair(info.padding, 4),
+    spacing: pair(info.spacing, 2),
+    outline: n(info.outline),
+  };
+  font.common = {
+    lineHeight: n(common.lineHeight),
+    base: n(common.base),
+    scaleW: n(common.scaleW),
+    scaleH: n(common.scaleH),
+    pages: n(common.pages),
+    packed: n(common.packed) === 1,
+    alphaChnl: n(common.alphaChnl),
+    redChnl: n(common.redChnl),
+    greenChnl: n(common.greenChnl),
+    blueChnl: n(common.blueChnl),
+  };
+  font.pages = Array.isArray(j.pages) ? j.pages.map(String) : [];
+  font.chars = (Array.isArray(j.chars) ? j.chars : []).map((c: Record<string, unknown>) => ({
+    id: n(c.id),
+    x: n(c.x),
+    y: n(c.y),
+    width: n(c.width),
+    height: n(c.height),
+    xoffset: n(c.xoffset),
+    yoffset: n(c.yoffset),
+    xadvance: n(c.xadvance),
+    page: n(c.page),
+    chnl: n(c.chnl, 15),
+  }));
+  font.kernings = (Array.isArray(j.kernings) ? j.kernings : []).map(
+    (k: Record<string, unknown>) => ({
+      first: n(k.first),
+      second: n(k.second),
+      amount: n(k.amount),
+    }),
+  );
+  return font;
 }
 
 // --- text and XML -------------------------------------------------------------
@@ -386,6 +460,31 @@ export function writeXml(font: BMFont): string {
   }
   out.push('</font>');
   return out.join('\n') + '\n';
+}
+
+export function writeJson(font: BMFont): string {
+  const { info: i, common: c } = font;
+  const b01 = (v: boolean) => (v ? 1 : 0);
+  return (
+    JSON.stringify(
+      {
+        pages: font.pages,
+        chars: font.chars,
+        info: {
+          ...i,
+          bold: b01(i.bold),
+          italic: b01(i.italic),
+          unicode: b01(i.unicode),
+          smooth: b01(i.smooth),
+          fixedHeight: b01(i.fixedHeight),
+        },
+        common: { ...c, packed: b01(c.packed) },
+        kernings: font.kernings,
+      },
+      null,
+      1,
+    ) + '\n'
+  );
 }
 
 export function writeBinary(font: BMFont): Uint8Array {

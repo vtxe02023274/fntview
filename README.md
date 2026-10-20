@@ -12,12 +12,12 @@ BMFont 是 AngelCode 的點陣字型格式，libGDX、Phaser、MonoGame、Cocos 
 
 ## 功能
 
-- 讀文字、XML、二進位（第 3 版）三種 .fnt，自動判斷格式
+- 讀文字、XML、二進位（第 3 版）三種 .fnt，以及 msdf-bmfont 這類工具輸出的 JSON，自動判斷格式
 - 照 BMFont 的規則排版：xoffset／yoffset、xadvance、字距調整（kerning）、換行用 lineHeight
 - 顯示基線和每個字的框，方便看偏移對不對
 - 圖集檢視：每個字的範圍，滑鼠移上去顯示 id、大小、偏移
 - 檢查問題：字超出圖集、頁面編號不存在、重複的字、缺空白字元、kerning 指到不存在的字、圖片大小跟字型宣告不同
-- 匯出成文字、XML 或二進位格式
+- 匯出成文字、XML、JSON 或二進位格式
 
 ## 用法
 

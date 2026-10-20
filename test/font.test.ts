@@ -102,6 +102,25 @@ describe('parseFont', () => {
     expect(parseFont(writeBinary(font)).info.charset).toBe('ANSI');
   });
 
+  it('refuses binary values that do not fit and page names of different lengths', () => {
+    const font = () => demo();
+    const wide = font();
+    wide.chars[0]!.x = 70000;
+    expect(() => writeBinary(wide)).toThrow(/x is 70000/);
+    const page = font();
+    page.chars[0]!.page = 300;
+    expect(() => writeBinary(page)).toThrow(/page is 300/);
+    const padded = font();
+    padded.info.padding = [300, 0, 0, 0];
+    expect(() => writeBinary(padded)).toThrow(/padding is 300/);
+    const names = font();
+    names.pages = ['a.png', 'long_name_1.png'];
+    names.common.pages = 2;
+    expect(() => writeBinary(names)).toThrow(FontError);
+    names.pages = ['page_0.png', 'page_1.png'];
+    expect(parseFont(writeBinary(names)).pages).toEqual(names.pages);
+  });
+
   it('rejects other files', () => {
     expect(() => parseFont(enc('hello'))).toThrow(FontError);
     expect(() => parseFont(enc('info face="x"\n'))).toThrow(/missing its info or common/);

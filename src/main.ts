@@ -274,7 +274,15 @@ $('#export-json').addEventListener(
 );
 $('#export-binary').addEventListener('click', () => {
   if (!font) return;
-  download(`${fontName}.bin.fnt`, writeBinary(font) as BlobPart);
+  let bytes: Uint8Array;
+  try {
+    bytes = writeBinary(font);
+  } catch (err) {
+    message.textContent =
+      err instanceof FontError ? `cannot save as binary: ${err.message}` : String(err);
+    return;
+  }
+  download(`${fontName}.bin.fnt`, bytes as BlobPart);
   if (font.distanceField) {
     message.textContent = 'the binary format has no distance field settings, they were left out';
   }

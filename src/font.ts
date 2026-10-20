@@ -552,6 +552,21 @@ export function writeJson(font: BMFont): string {
   );
 }
 
+const RANGES = {
+  u8: [0, 0xff],
+  u16: [0, 0xffff],
+  i16: [-0x8000, 0x7fff],
+  u32: [0, 0xffffffff],
+} as const;
+
+/** Throws instead of letting a DataView wrap a value that does not fit its field. */
+function fit(kind: keyof typeof RANGES, value: number, what: string): number {
+  const [min, max] = RANGES[kind];
+  if (!Number.isInteger(value) || value < min || value > max)
+    throw new FontError(`${what} is ${value}, the binary format only holds ${min} to ${max}`);
+  return value;
+}
+
 export function writeBinary(font: BMFont): Uint8Array {
   const enc = new TextEncoder();
   const { info: i, common: c } = font;
@@ -566,7 +581,7 @@ export function writeBinary(font: BMFont): Uint8Array {
   const face = enc.encode(i.face);
   const info = new Uint8Array(14 + face.length + 1);
   const iv = new DataView(info.buffer);
-  iv.setInt16(0, i.size, true);
+  iv.setInt16(0, fit('i16', i.size, 'info size'), true);
   info[2] =
     (i.smooth ? 0x80 : 0) |
     (i.unicode ? 0x40 : 0) |
@@ -574,35 +589,51 @@ export function writeBinary(font: BMFont): Uint8Array {
     (i.bold ? 0x10 : 0) |
     (i.fixedHeight ? 0x08 : 0);
   info[3] = i.unicode ? 0 : charsetCode(i.charset);
-  iv.setUint16(4, i.stretchH, true);
-  info.set([i.aa, ...i.padding, ...i.spacing, i.outline], 6);
+  iv.setUint16(4, fit('u16', i.stretchH, 'info stretchH'), true);
+  info.set(
+    [
+      fit('u8', i.aa, 'info aa'),
+      ...i.padding.map((v) => fit('u8', v, 'info padding')),
+      ...i.spacing.map((v) => fit('u8', v, 'info spacing')),
+      fit('u8', i.outline, 'info outline'),
+    ],
+    6,
+  );
   info.set(face, 14);
   block(1, info);
 
   const common = new Uint8Array(15);
   const cv = new DataView(common.buffer);
-  [c.lineHeight, c.base, c.scaleW, c.scaleH, c.pages].forEach((v, k) =>
-    cv.setUint16(k * 2, v, true),
+  (['lineHeight', 'base', 'scaleW', 'scaleH', 'pages'] as const).forEach((key, k) =>
+    cv.setUint16(k * 2, fit('u16', c[key], `common ${key}`), true),
   );
-  common.set([c.packed ? 1 : 0, c.alphaChnl, c.redChnl, c.greenChnl, c.blueChnl], 10);
+  common[10] = c.packed ? 1 : 0;
+  (['alphaChnl', 'redChnl', 'greenChnl', 'blueChnl'] as const).forEach((key, k) => {
+    common[11 + k] = fit('u8', c[key], `common ${key}`);
+  });
   block(2, common);
 
+  // Readers find page n at n times the length of the first name.
+  const names = font.pages.map((p) => enc.encode(p).length);
+  if (names.some((n) => n !== names[0]))
+    throw new FontError('the binary format needs every page name to have the same length');
   block(3, enc.encode(font.pages.map((p) => p + '\0').join('')));
 
   const chars = new Uint8Array(font.chars.length * 20);
   const hv = new DataView(chars.buffer);
   font.chars.forEach((g, k) => {
     const p = k * 20;
-    hv.setUint32(p, g.id, true);
-    hv.setUint16(p + 4, g.x, true);
-    hv.setUint16(p + 6, g.y, true);
-    hv.setUint16(p + 8, g.width, true);
-    hv.setUint16(p + 10, g.height, true);
-    hv.setInt16(p + 12, g.xoffset, true);
-    hv.setInt16(p + 14, g.yoffset, true);
-    hv.setInt16(p + 16, g.xadvance, true);
-    chars[p + 18] = g.page;
-    chars[p + 19] = g.chnl;
+    const what = (key: string) => `char ${g.id} ${key}`;
+    hv.setUint32(p, fit('u32', g.id, 'char id'), true);
+    hv.setUint16(p + 4, fit('u16', g.x, what('x')), true);
+    hv.setUint16(p + 6, fit('u16', g.y, what('y')), true);
+    hv.setUint16(p + 8, fit('u16', g.width, what('width')), true);
+    hv.setUint16(p + 10, fit('u16', g.height, what('height')), true);
+    hv.setInt16(p + 12, fit('i16', g.xoffset, what('xoffset')), true);
+    hv.setInt16(p + 14, fit('i16', g.yoffset, what('yoffset')), true);
+    hv.setInt16(p + 16, fit('i16', g.xadvance, what('xadvance')), true);
+    chars[p + 18] = fit('u8', g.page, what('page'));
+    chars[p + 19] = fit('u8', g.chnl, what('chnl'));
   });
   block(4, chars);
 
@@ -610,9 +641,9 @@ export function writeBinary(font: BMFont): Uint8Array {
     const kern = new Uint8Array(font.kernings.length * 10);
     const kv = new DataView(kern.buffer);
     font.kernings.forEach((k, n) => {
-      kv.setUint32(n * 10, k.first, true);
-      kv.setUint32(n * 10 + 4, k.second, true);
-      kv.setInt16(n * 10 + 8, k.amount, true);
+      kv.setUint32(n * 10, fit('u32', k.first, 'kerning first'), true);
+      kv.setUint32(n * 10 + 4, fit('u32', k.second, 'kerning second'), true);
+      kv.setInt16(n * 10 + 8, fit('i16', k.amount, 'kerning amount'), true);
     });
     block(5, kern);
   }

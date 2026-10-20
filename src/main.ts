@@ -11,7 +11,9 @@ import {
   type BMFont,
   type Glyph,
 } from './font.js';
+import { ASCII, PackError } from './generate.js';
 import { layoutText } from './layout.js';
+import { makeFont } from './rasterize.js';
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const preview = $<HTMLCanvasElement>('#preview');
@@ -275,6 +277,47 @@ $('#export-binary').addEventListener('click', () => {
   download(`${fontName}.bin.fnt`, writeBinary(font) as BlobPart);
   if (font.distanceField) {
     message.textContent = 'the binary format has no distance field settings, they were left out';
+  }
+});
+
+$('#export-page').addEventListener('click', () => {
+  const index = Number(pageSelect.value || 0);
+  const page = pages[index];
+  if (!font || !page) {
+    message.textContent = 'no page image to save';
+    return;
+  }
+  const c = document.createElement('canvas');
+  c.width = page.width;
+  c.height = page.height;
+  c.getContext('2d')!.drawImage(page, 0, 0);
+  const name = font.pages[index]!.split(/[\\/]/).pop()!;
+  c.toBlob((blob) => blob && download(name, blob), 'image/png');
+});
+
+const makeChars = $<HTMLTextAreaElement>('#make-chars');
+makeChars.value = ASCII;
+$('#make').addEventListener('click', async () => {
+  const file = $<HTMLInputElement>('#make-file').files?.[0];
+  if (!file) {
+    message.textContent = 'pick a font file first';
+    return;
+  }
+  try {
+    const made = await makeFont(file, {
+      size: Number($<HTMLInputElement>('#make-size').value),
+      padding: Number($<HTMLInputElement>('#make-padding').value),
+      pageWidth: Number($<HTMLInputElement>('#make-width').value),
+      text: makeChars.value,
+    });
+    font = made.font;
+    fontName = font.info.face;
+    pages = [await createImageBitmap(made.page)];
+    message.textContent = `made ${font.chars.length} chars from ${file.name}, save the page and a descriptor below`;
+    showFont();
+  } catch (err) {
+    message.textContent =
+      err instanceof PackError ? err.message : `cannot use ${file.name}: ${String(err)}`;
   }
 });
 

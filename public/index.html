@@ -161,6 +161,47 @@
           <button id="export-xml">XML</button>
           <button id="export-json">JSON</button>
           <button id="export-binary">Binary</button>
+          <button id="export-page">Page .png</button>
+        </div>
+      </section>
+      <section>
+        <h2>Make from a font file</h2>
+        <div class="row">
+          <label class="file"
+            >Pick .ttf / .otf / .woff<input
+              id="make-file"
+              type="file"
+              accept=".ttf,.otf,.woff,.woff2"
+          /></label>
+        </div>
+        <div class="row" style="margin-top: 6px">
+          <label
+            >size
+            <input id="make-size" type="number" min="4" max="256" value="32" style="width: 56px"
+          /></label>
+          <label
+            >padding
+            <input id="make-padding" type="number" min="0" max="16" value="1" style="width: 44px"
+          /></label>
+          <label
+            >page
+            <input
+              id="make-width"
+              type="number"
+              min="64"
+              max="4096"
+              step="64"
+              value="512"
+              style="width: 64px"
+          /></label>
+        </div>
+        <textarea
+          id="make-chars"
+          spellcheck="false"
+          style="min-height: 48px; margin-top: 6px; font-size: 12px"
+        ></textarea>
+        <div class="row" style="margin-top: 6px">
+          <button id="make">Make font</button>
         </div>
       </section>
       <p style="color: var(--muted)">

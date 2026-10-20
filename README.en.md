@@ -18,7 +18,8 @@ BMFont is AngelCode's bitmap font format. libGDX, Phaser, MonoGame, Cocos and ma
 - Shows baselines and glyph boxes so offsets are easy to check
 - Atlas view with every glyph's rectangle; hover for id, size and offsets
 - Problem checks: glyphs outside the atlas, missing pages, duplicate characters, no space character, kerning for characters that do not exist, page images that are not the declared size
-- Exports to text, XML, JSON or binary
+- Exports to text, XML, JSON or binary, and saves the page images
+- Makes a BMFont from a .ttf / .otf / .woff: rasterized with the browser text renderer, packed into an atlas, kerning measured, no BMFont or Hiero needed
 
 ## Usage
 

@@ -18,7 +18,8 @@ BMFont 是 AngelCode 的點陣字型格式，libGDX、Phaser、MonoGame、Cocos 
 - 顯示基線和每個字的框，方便看偏移對不對
 - 圖集檢視：每個字的範圍，滑鼠移上去顯示 id、大小、偏移
 - 檢查問題：字超出圖集、頁面編號不存在、重複的字、缺空白字元、kerning 指到不存在的字、圖片大小跟字型宣告不同
-- 匯出成文字、XML、JSON 或二進位格式
+- 匯出成文字、XML、JSON 或二進位格式，也可以存出頁面圖片
+- 從 .ttf／.otf／.woff 產生 BMFont：用瀏覽器的文字繪製點陣化、自動排進圖集、量出字距調整，不用裝 BMFont 或 Hiero
 
 ## 用法
 

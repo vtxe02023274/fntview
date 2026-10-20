@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>fntview</title>
+    <style>
+      :root {
+        --bg: #14171f;
+        --panel: #1c2029;
+        --line: #2c3242;
+        --text: #e6e6e6;
+        --muted: #9aa3b2;
+        --accent: #ffe08a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          13px/1.4 system-ui,
+          sans-serif;
+      }
+      body {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        min-height: 100vh;
+      }
+      aside {
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+      h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      button,
+      select,
+      .file {
+        background: #262b36;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 4px 8px;
+        font: inherit;
+        cursor: pointer;
+      }
+      .file input {
+        display: none;
+      }
+      #info {
+        white-space: pre-line;
+        font-family: monospace;
+        color: var(--muted);
+      }
+      #problems {
+        margin: 0;
+        padding-left: 18px;
+      }
+      #problems .error {
+        color: #ff8f8f;
+      }
+      #problems .warning {
+        color: #f2c14e;
+      }
+      #message {
+        color: var(--muted);
+      }
+      main {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+      textarea {
+        width: 100%;
+        min-height: 70px;
+        background: #11141b;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 8px;
+        font: 14px monospace;
+      }
+      .stage {
+        overflow: auto;
+        background: repeating-conic-gradient(#1e222c 0 25%, #191c25 0 50%) 0 0 / 16px 16px;
+        border: 1px solid var(--line);
+        padding: 8px;
+      }
+      canvas {
+        image-rendering: pixelated;
+        display: block;
+      }
+      #hover {
+        font-family: monospace;
+        color: var(--muted);
+        min-height: 1.4em;
+      }
+      @media (max-width: 760px) {
+        body {
+          grid-template-columns: 1fr;
+        }
+        aside {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <h1>fntview</h1>
+      <div class="row">
+        <label class="file"
+          >Open .fnt + images<input id="file" type="file" multiple accept=".fnt,.xml,.txt,image/*"
+        /></label>
+        <button id="demo">Demo</button>
+      </div>
+      <div id="message"></div>
+      <section>
+        <h2>Font</h2>
+        <div id="info"></div>
+      </section>
+      <section>
+        <h2>Problems</h2>
+        <ul id="problems"></ul>
+      </section>
+      <section>
+        <h2>Convert</h2>
+        <div class="row">
+          <button id="export-text">Text</button>
+          <button id="export-xml">XML</button>
+          <button id="export-binary">Binary</button>
+        </div>
+      </section>
+      <p style="color: var(--muted)">
+        Reads text, XML and binary BMFont files in your browser; nothing is uploaded. Drop the .fnt
+        and its page images anywhere on the page.
+      </p>
+    </aside>
+    <main>
+      <textarea id="sample" spellcheck="false">
+THE QUICK BROWN FOX
+JUMPS OVER THE LAZY DOG
+0123456789 LATAV!?</textarea>
+      <div class="row">
+        <label>zoom <input id="zoom" type="range" min="1" max="12" value="6" /></label>
+        <label>color <input id="tint" type="color" value="#ffffff" /></label>
+        <label><input id="guides" type="checkbox" /> baselines and boxes</label>
+      </div>
+      <div class="stage"><canvas id="preview"></canvas></div>
+      <div class="row">
+        <h2 style="margin: 0">Atlas</h2>
+        <select id="page"></select>
+      </div>
+      <div class="stage"><canvas id="atlas"></canvas></div>
+      <div id="hover"></div>
+    </main>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

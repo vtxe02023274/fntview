@@ -223,7 +223,10 @@ function parseTagged(source: string, format: 'text' | 'xml'): BMFont {
       if (m) tags.push({ name: m[1]!, attrs: attributes(m[2]!) });
     }
   } else {
-    for (const m of source.matchAll(/<(\w+)((?:\s+[\w-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*\/?>/g)) {
+    const withoutComments = source.replace(/<!--[\s\S]*?-->/g, '');
+    for (const m of withoutComments.matchAll(
+      /<(\w+)((?:\s+[\w-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*\/?>/g,
+    )) {
       const attrs = attributes(m[2]!);
       for (const [k, v] of attrs) attrs.set(k, decodeEntities(v));
       tags.push({ name: m[1]!, attrs });
@@ -435,7 +438,7 @@ function parseBinary(bytes: Uint8Array): BMFont {
       case 4:
         for (let p = start; p + 20 <= end; p += 20) {
           font.chars.push({
-            id: view.getUint32(p, true),
+            id: view.getInt32(p, true) === INVALID_CHAR ? INVALID_CHAR : view.getUint32(p, true),
             x: view.getUint16(p + 4, true),
             y: view.getUint16(p + 6, true),
             width: view.getUint16(p + 8, true),
@@ -552,6 +555,9 @@ export function writeJson(font: BMFont): string {
   );
 }
 
+/** BMFont's "invalid char" glyph: id -1 in text and XML, 0xFFFFFFFF in binary files. */
+export const INVALID_CHAR = -1;
+
 const RANGES = {
   u8: [0, 0xff],
   u16: [0, 0xffff],
@@ -624,7 +630,7 @@ export function writeBinary(font: BMFont): Uint8Array {
   font.chars.forEach((g, k) => {
     const p = k * 20;
     const what = (key: string) => `char ${g.id} ${key}`;
-    hv.setUint32(p, fit('u32', g.id, 'char id'), true);
+    hv.setUint32(p, g.id === INVALID_CHAR ? 0xffffffff : fit('u32', g.id, 'char id'), true);
     hv.setUint16(p + 4, fit('u16', g.x, what('x')), true);
     hv.setUint16(p + 6, fit('u16', g.y, what('y')), true);
     hv.setUint16(p + 8, fit('u16', g.width, what('width')), true);

@@ -12,7 +12,7 @@ const describe = (id: number) =>
 
 /** Combining marks and format characters such as joiners are meant to take no room. */
 const zeroWidth = (id: number) =>
-  id <= 0x10ffff && /^[\p{M}\p{Cf}]$/u.test(String.fromCodePoint(id));
+  id >= 0 && id <= 0x10ffff && /^[\p{M}\p{Cf}]$/u.test(String.fromCodePoint(id));
 
 /** Problems that show up as missing or garbled text in a game. */
 export function checkFont(

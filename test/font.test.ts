@@ -80,6 +80,24 @@ describe('parseFont', () => {
     expect(detectFormat(writeBinary(font))).toBe('binary');
   });
 
+  it('keeps the invalid char glyph (id -1) in every writer', () => {
+    const font = demo();
+    font.chars.push({ ...font.chars[0]!, id: -1 });
+    expect(parseFont(enc(writeText(font)))).toEqual(font);
+    expect(parseFont(enc(writeXml(font)))).toEqual(font);
+    expect(parseFont(writeBinary(font))).toEqual(font);
+    expect(() => checkFont(font)).not.toThrow();
+  });
+
+  it('ignores tags inside XML comments', () => {
+    const xml = parseFont(
+      enc(
+        `<?xml version="1.0"?><font><info face="A" size="8"/><common lineHeight="9" base="7" scaleW="16" scaleH="16" pages="1"/><pages><page id="0" file="p.png"/></pages><chars count="1"><!-- <char id="99" x="0" y="0" width="1" height="1" xoffset="0" yoffset="0" xadvance="1" page="0" chnl="15"/> --><char id="66" x="0" y="0" width="2" height="2" xoffset="0" yoffset="0" xadvance="3" page="0" chnl="15"/></chars></font>`,
+      ),
+    );
+    expect(xml.chars.map((c) => c.id)).toEqual([66]);
+  });
+
   it('keeps fixedHeight in every writer', () => {
     const font = demo();
     font.info.fixedHeight = true;
